@@ -1,0 +1,33 @@
+{
+    "name": "ileadu/laravel-octane-unix-socket-support",
+    "description": "Add support for UNIX socket in Octane Swoole server",
+    "keywords": ["laravel", "octane", "swoole"],
+    "type": "library",
+    "support": {
+        "source": "https://github.com/ileadu/laravel-octane-unix-socket-support"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ileadu",
+            "email": "ileadu@gmail.com"
+        }
+    ],
+    "version": "1.0.0",
+    "require": {
+        "laravel/octane": "^2.10",
+        "cweagans/composer-patches": "^1.7"
+    },
+    "config": {
+        "allow-plugins": {
+            "cweagans/composer-patches": true
+        }
+    },
+    "extra": {
+        "patches": {
+            "laravel/octane": {
+                "Add UNIX socket support to Octane": "vendor/ileadu/laravel-octane-unix-socket-support/patches/octane-unix-socket.patch"
+            }
+        }
+    }
+}

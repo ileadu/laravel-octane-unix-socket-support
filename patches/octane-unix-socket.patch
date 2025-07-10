@@ -1,0 +1,110 @@
+From b31e87b53f419a51f89fe388d3ef5614aee72a26 Mon Sep 17 00:00:00 2001
+From: Marshall <ileadu@gmail.com>
+Date: Sun, 6 Jul 2025 11:18:12 +0800
+Subject: [PATCH] make octane swoole support unix socket
+
+---
+ bin/createSwooleServer.php                    | 26 +++++++++++++------
+ .../Concerns/InteractsWithServers.php         |  8 +++++-
+ src/Commands/StartCommand.php                 |  2 ++
+ src/Commands/StartSwooleCommand.php           |  2 ++
+ 4 files changed, 29 insertions(+), 9 deletions(-)
+
+diff --git a/bin/createSwooleServer.php b/bin/createSwooleServer.php
+index b94bc0d91..9c46ee4cb 100644
+--- a/bin/createSwooleServer.php
++++ b/bin/createSwooleServer.php
+@@ -7,14 +7,24 @@
+ 
+     $sock = filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) ? SWOOLE_SOCK_TCP : SWOOLE_SOCK_TCP6;
+ 
+-    $server = new Swoole\Http\Server(
+-        $host,
+-        $serverState['port'] ?? 8000,
+-        $config['swoole']['mode'] ?? SWOOLE_PROCESS,
+-        ($config['swoole']['ssl'] ?? false)
+-            ? $sock | SWOOLE_SSL
+-            : $sock,
+-    );
++    $unixSock = $serverState['sock'] ?? null;
++    if (is_string($unixSock) && str_starts_with($unixSock, '/')) {
++        $server = new Swoole\Http\Server(
++            $unixSock,  // Use UNIX socket
++            0,          // Port is not needed
++            $config['swoole']['mode'] ?? SWOOLE_PROCESS,
++            SWOOLE_SOCK_UNIX_STREAM
++        );
++    } else {
++        $server = new Swoole\Http\Server(
++            $host,
++            $serverState['port'] ?? 8000,
++            $config['swoole']['mode'] ?? SWOOLE_PROCESS,
++            ($config['swoole']['ssl'] ?? false)
++                ? $sock | SWOOLE_SSL
++                : $sock,
++        );
++    }
+ } catch (Throwable $e) {
+     Laravel\Octane\Stream::shutdown($e);
+ 
+diff --git a/src/Commands/Concerns/InteractsWithServers.php b/src/Commands/Concerns/InteractsWithServers.php
+index d74e3f8b6..8bc35756b 100644
+--- a/src/Commands/Concerns/InteractsWithServers.php
++++ b/src/Commands/Concerns/InteractsWithServers.php
+@@ -102,9 +102,15 @@ protected function writeServerRunningMessage()
+     {
+         $this->components->info('Server running…');
+ 
++        if ($this->option('sock')) {
++            $str = '  Local: <fg=white;options=bold>unix:'.$this->option('sock').' </>';
++        } else {
++            $str = '  Local: <fg=white;options=bold>'.($this->hasOption('https') && $this->option('https') ? 'https://' : 'http://').$this->getHost().':'.$this->getPort().' </>';
++        }
++
+         $this->output->writeln([
+             '',
+-            '  Local: <fg=white;options=bold>'.($this->hasOption('https') && $this->option('https') ? 'https://' : 'http://').$this->getHost().':'.$this->getPort().' </>',
++            $str,
+             '',
+             '  <fg=yellow>Press Ctrl+C to stop the server</>',
+             '',
+diff --git a/src/Commands/StartCommand.php b/src/Commands/StartCommand.php
+index 170e876b2..e8f3081f0 100644
+--- a/src/Commands/StartCommand.php
++++ b/src/Commands/StartCommand.php
+@@ -19,6 +19,7 @@ class StartCommand extends Command implements SignalableCommandInterface
+                     {--server= : The server that should be used to serve the application}
+                     {--host= : The IP address the server should bind to}
+                     {--port= : The port the server should be available on [default: "8000"]}
++                    {--sock= : The unix domain socket the server should bind to [Swoole only]}
+                     {--admin-port= : The port the admin server should be available on [FrankenPHP only]}
+                     {--rpc-host= : The RPC IP address the server should bind to}
+                     {--rpc-port= : The RPC port the server should be available on}
+@@ -67,6 +68,7 @@ protected function startSwooleServer()
+         return $this->call('octane:swoole', [
+             '--host' => $this->getHost(),
+             '--port' => $this->getPort(),
++            '--sock' => $this->option('sock'),
+             '--workers' => $this->option('workers') ?: config('octane.workers', 'auto'),
+             '--task-workers' => $this->option('task-workers') ?: config('octane.task_workers', 'auto'),
+             '--max-requests' => $this->option('max-requests') ?: config('octane.max_requests', 500),
+diff --git a/src/Commands/StartSwooleCommand.php b/src/Commands/StartSwooleCommand.php
+index 4d31dbc3a..e69898c11 100644
+--- a/src/Commands/StartSwooleCommand.php
++++ b/src/Commands/StartSwooleCommand.php
+@@ -24,6 +24,7 @@ class StartSwooleCommand extends Command implements SignalableCommandInterface
+     public $signature = 'octane:swoole
+                     {--host= : The IP address the server should bind to}
+                     {--port= : The port the server should be available on}
++                    {--sock= : The unix socket the server should bind to [Swoole only]}
+                     {--workers=auto : The number of workers that should be available to handle requests}
+                     {--task-workers=auto : The number of task workers that should be available to handle tasks}
+                     {--max-requests=500 : The number of requests to process before reloading the server}
+@@ -105,6 +106,7 @@ protected function writeServerStateFile(
+             'appName' => config('app.name', 'Laravel'),
+             'host' => $this->getHost(),
+             'port' => $this->getPort(),
++            'sock' => $this->option('sock'),
+             'workers' => $this->workerCount($extension),
+             'taskWorkers' => $this->taskWorkerCount($extension),
+             'maxRequests' => $this->option('max-requests'),
