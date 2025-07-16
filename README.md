@@ -40,7 +40,8 @@ To apply this patch to Laravel Octane v2.10+
 composer require ileadu/laravel-octane-unix-socket-support
 ```
 
-
+## 💡 About This Patch
+This package applies the patch from [laravel/octane#1032](https://github.com/laravel/octane/pull/1032)
 
 ## 🚀 Usage
 Start Octane with Swoole and a UNIX socket:
