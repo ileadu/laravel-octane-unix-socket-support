@@ -3,17 +3,13 @@
 Add UNIX Domain Socket (UDS) support to [Laravel Octane](https://github.com/laravel/octane) when using the Swoole server.
 This enables high-performance, local-only communication between Octane and Nginx (or other reverse proxies), ideal for Docker or Linux server deployments.
 
-
-
 ## ✨ Features
 
-- ✅ Adds `--sock=/path/to/socket.sock` option to `php artisan octane:start`
-- ✅ Binds Swoole server to a UNIX socket instead of TCP host/port
-- ✅ Fully backward-compatible (TCP continues to work if `--sock` is not used)
+- ✅ Supports UNIX Domain Socket (UDS) via `--host=/tmp/octane.sock`
+- ✅ Automatically detects socket paths and binds Swoole accordingly
+- ✅ Fully backward-compatible (TCP continues to work if UDS is not used)
 - ✅ Optimized for Linux and Docker environments
 - 🚫 Ignored on Windows (no UDS support)
-
-
 
 ## 📦 Installation
 
@@ -36,22 +32,28 @@ Add the following to the `extra.patches` section in your root `composer.json`:
 ```
 
 To apply this patch to Laravel Octane v2.10+
+
 ```bash
 composer require ileadu/laravel-octane-unix-socket-support
 ```
 
 ## 💡 About This Patch
-This package applies the patch from [laravel/octane#1032](https://github.com/laravel/octane/pull/1032)
+
+This package applies the patch from [laravel/octane#1032](https://github.com/laravel/octane/pull/1032) and enhances the existing `--host` option to support UNIX socket paths
 
 ## 🚀 Usage
+
 Start Octane with Swoole and a UNIX socket:
+
 ```bash
-php artisan octane:start --server=swoole --sock=/tmp/octane.sock
+php artisan octane:start --server=swoole --host=/tmp/octane.sock
 ```
 
-
+If the `--host` value is a valid file path (e.g. starts with `/` and ends with `.sock`),
+Octane will automatically use a UNIX domain socket instead of TCP.
 
 ## 🔧 Nginx Integration Example
+
 Example nginx.conf:
 
 ```nginx
@@ -77,9 +79,8 @@ location @octane {
 }
 ```
 
-
-
 ## 💡 Why Use UNIX Domain Sockets?
+
 🔥 Faster than TCP for **local** communication (less overhead)
 
 🔒 More secure – no external port exposure
@@ -88,28 +89,23 @@ location @octane {
 
 🧩 Clean and easy integration with Nginx via proxy_pass
 
-
-
-
 ## ❓ Fallback Behavior
-If --sock is provided → Swoole binds to the UNIX socket path.
 
-If not provided → Octane behaves normally (uses --host and --port).
+If `--host` is a UNIX socket path → Swoole binds to the socket.
+
+If `--host` is a hostname or IP → Octane behaves normally (TCP mode).
 
 Patch is ignored on Windows platforms.
 
-
-
 ## 📝 Patch Details
-This package includes a patch against Laravel Octane v2.10.0, adding the --sock CLI option to the Octane start command and configuring the Swoole server to bind to the provided socket path.
 
-
+This package includes a patch against Laravel Octane v2.10.0, enhancing the `--host` option to support UNIX socket binding for Swoole.
 
 ## 📄 License
+
 MIT
 
-
-
 ## 🙏 Credits
+
 Thanks to the Laravel and Octane teams for building an incredible high-performance foundation.
 This patch is a community-contributed improvement for specific deployment scenarios.

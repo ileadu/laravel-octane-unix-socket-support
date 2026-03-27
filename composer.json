@@ -13,7 +13,7 @@
             "email": "ileadu@gmail.com"
         }
     ],
-    "version": "1.0.0",
+    "version": "2.0.0",
     "require": {
         "laravel/octane": "^2.10",
         "cweagans/composer-patches": "^1.7"
